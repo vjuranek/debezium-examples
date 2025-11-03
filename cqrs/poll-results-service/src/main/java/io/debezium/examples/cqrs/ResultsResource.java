@@ -3,6 +3,7 @@ package io.debezium.examples.cqrs;
 import java.util.List;
 
 import io.debezium.examples.cqrs.entity.OptionVotesEntity;
+import io.debezium.examples.cqrs.entity.PollEntity;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
@@ -32,10 +33,32 @@ public class ResultsResource {
     private EntityManager em;
 
     @GET
+    public List<PollEntity> getPolls() {
+        try {
+            Query q = em.createNativeQuery("SELECT id, question FROM pollentity", PollEntity.class);
+            List<PollEntity> polls = q.getResultList();
+            for (PollEntity poll : polls) {
+                LOGGER.info("poll id: {}, question: {}", poll.id, poll.question);
+            }
+            return polls;
+        }
+        catch (Exception e) {
+            if (e.getMessage().contains("table does not exist [table=pollentity]")) {
+                LOGGER.warn("Table 'pollentity' does not exist, have you already deployed source and sink connectors?");
+            }
+            else {
+                throw e;
+            }
+        }
+        return null;
+    }
+
+    @GET
     @Path("{id}")
     public List<OptionVotesEntity> getResult(Long id) {
         try {
             Query q = em.createNativeQuery(resultQuery, OptionVotesEntity.class);
+            q.setParameter("pollId", id);
             List<OptionVotesEntity> res = q.getResultList();
             for (OptionVotesEntity o : res) {
                 LOGGER.info("result: {}, votes: {}", o.option, o.votes);
